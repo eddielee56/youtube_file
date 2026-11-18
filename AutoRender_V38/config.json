@@ -1,0 +1,12 @@
+{
+  "timezone": "Asia/Taipei",
+  "folders": {
+    "v33": "AutoRender_V33",
+    "v34": "AutoRender_V34",
+    "v35": "AutoRender_V35"
+  },
+  "alert_score": 75,
+  "email": {"enabled": false},
+  "schedule": {"daily": "08:30", "weekly_friday": "18:00"},
+  "publication": {"automatic_upload": false, "require_human_approval": true}
+}
