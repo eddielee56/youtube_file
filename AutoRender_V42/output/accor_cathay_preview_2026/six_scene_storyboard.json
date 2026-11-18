@@ -1,0 +1,48 @@
+{
+  "version": "4.2",
+  "event_key": "hotel_transfer|cathay|50|da66ef9d39be2963be",
+  "input_path": "C:\\Users\\eddie\\OneDrive\\Desktop\\YouTubeAI\\AutoRender_V39\\approved_for_preview\\accor_cathay_APPROVED_PREVIEW_ONLY.json",
+  "snapshot_sha256": "8711768c4f93ad891e6f5fda4f1929685784dd36b7a80278069272edcbb88002",
+  "generator": "GEMINI_REVIEW_REQUIRED",
+  "model": "gemini-3.5-flash",
+  "publication_approved": false,
+  "requires_editorial_review": true,
+  "scenes": [
+    {
+      "label": "開場",
+      "heading": "雅高 × 國泰｜優惠試播",
+      "detail": "ALL Accor × Cathay Asia Miles",
+      "narration": "喜歡出遊的朋友啊，最近這項跨界聯名動態很值得了解。"
+    },
+    {
+      "label": "優惠重點",
+      "heading": "合格住宿額外獲得50% Reward Points",
+      "detail": "加碼的是飯店住宿點數，不是轉哩程加送五成。",
+      "narration": "這次的合作究竟能帶來哪些實際的好處？現在就直接梳理給你。合格住宿額外獲得50% Reward Points。加碼的是飯店住宿點數，不是轉哩程加送五成。"
+    },
+    {
+      "label": "適用資格",
+      "heading": "參加條件",
+      "detail": "入住前設定 Asia Miles 自動轉換；需合格訂房，至少住一晚。",
+      "narration": "不過想要獲得這些好處，記得先確認自己是不是符合參加標準喔。入住前設定 Asia Miles 自動轉換；需合格訂房，至少住一晚。"
+    },
+    {
+      "label": "活動期限",
+      "heading": "2027年1月4日前預訂；1月10日前入住。",
+      "detail": "依活動官網條款",
+      "narration": "時程安排上是有時間限制的，大家要稍微留意一下日期進度喔。2027年1月4日前預訂；1月10日前入住。"
+    },
+    {
+      "label": "重要限制",
+      "heading": "注意事項",
+      "detail": "每位會員最多三次；第三方訂房平台不適用。",
+      "narration": "另外在開始之前，有些細微的注意事項還是需要特別留心。每位會員最多三次；第三方訂房平台不適用。"
+    },
+    {
+      "label": "結尾",
+      "heading": "查看完整官方條款",
+      "detail": "僅供內部審核",
+      "narration": "你對這次的新合作滿意嗎？歡迎在底下留言區分享你的想法吧。訂房前記得先看官方條款喔！"
+    }
+  ]
+}

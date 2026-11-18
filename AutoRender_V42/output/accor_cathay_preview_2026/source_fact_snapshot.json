@@ -1,0 +1,38 @@
+{
+  "type": "hotel_to_airline",
+  "slug": "accor_cathay_preview_2026",
+  "title": "雅高 × 國泰｜優惠試播",
+  "hook": "住雅高飯店，多賺五成點數喔！",
+  "program": "ALL Accor × Cathay Asia Miles",
+  "headline": "合格住宿額外獲得50% Reward Points",
+  "benefit": "加碼的是飯店住宿點數，不是轉哩程加送五成。",
+  "eligibility": "入住前設定 Asia Miles 自動轉換；需合格訂房，至少住一晚。",
+  "deadline": "2027年1月4日前預訂；1月10日前入住。",
+  "caveat": "每位會員最多三次；第三方訂房平台不適用。",
+  "conclusion": "訂房前記得先看官方條款喔！",
+  "source_url": "https://all.accor.com/a/en/loyalty-program/partners/offers/Cathay-Pacific-Asia-Miles-offer.html",
+  "checked_at": "2026-11-15",
+  "valid_until": "2027-01-04",
+  "event_key": "hotel_transfer|cathay|50|da66ef9d39be2963be",
+  "source_verified": true,
+  "approved_for_preview": true,
+  "publication_approved": false,
+  "reviewer_confirmation": "I_CHECKED_OFFICIAL_TERMS",
+  "evidence": [
+    {
+      "field": "bonus_or_value",
+      "official_url": "https://all.accor.com/a/en/loyalty-program/partners/offers/Cathay-Pacific-Asia-Miles-offer.html",
+      "excerpt": "50% Bonus Reward Points"
+    },
+    {
+      "field": "dates",
+      "official_url": "https://all.accor.com/a/en/loyalty-program/partners/offers/Cathay-Pacific-Asia-Miles-offer.html",
+      "excerpt": "January 4th 2027"
+    },
+    {
+      "field": "eligibility",
+      "official_url": "https://all.accor.com/a/en/loyalty-program/partners/offers/Cathay-Pacific-Asia-Miles-offer.html",
+      "excerpt": "activated Cathay Pacific Asia Miles as their preferred automatic conversion option"
+    }
+  ]
+}
