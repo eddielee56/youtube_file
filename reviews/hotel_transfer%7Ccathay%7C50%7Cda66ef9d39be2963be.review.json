@@ -4,12 +4,12 @@
   "program": "ALL Accor × Cathay Asia Miles",
   "video": {
     "repo_path": "previews/accor-cathay/AutoRender_V21_DEMO_VOICE_NOT_FOR_PUBLISHING.mp4",
-    "raw_url": "https://raw.githubusercontent.com/eddielee56/youtube_file/d1cff779b2725d3101512a7c75065e0fd7694a19/previews/accor-cathay/AutoRender_V21_DEMO_VOICE_NOT_FOR_PUBLISHING.mp4",
+    "raw_url": "https://raw.githubusercontent.com/eddielee56/youtube_file/67ba0960e232678c0168cabde54cd98a7a52eba0/previews/accor-cathay/AutoRender_V21_DEMO_VOICE_NOT_FOR_PUBLISHING.mp4",
     "duration_s": 50.367,
     "width": 540,
     "height": 960,
-    "version": "sha256:b54b012799a9653fdc204184fcc7988aca9cf9c56c265ec651218e17791001f3",
-    "commit_sha": "d1cff779b2725d3101512a7c75065e0fd7694a19"
+    "version": "67ba096",
+    "commit_sha": "67ba0960e232678c0168cabde54cd98a7a52eba0"
   },
   "facts": {
     "headline": "合格住宿額外獲得50% Reward Points",
@@ -60,12 +60,12 @@
       "note": "待 Muse 審核"
     }
   },
-  "status": "pending",
+  "status": "returned",
   "decision": {
-    "result": "pending",
-    "by": null,
-    "at": null,
-    "note": "以 Muse 審核頁為準，目前待審核；舊本地通過紀錄無效。"
+    "result": "returned",
+    "by": "LEE",
+    "at": "2026-11-19T13:30:16Z",
+    "note": "加上雅高及國泰的logo"
   },
   "publication_approved": false
 }
