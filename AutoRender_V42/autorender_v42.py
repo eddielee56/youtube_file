@@ -7,6 +7,8 @@ from __future__ import annotations
 import argparse, datetime as dt, getpass, hashlib, importlib.util, json, os
 from pathlib import Path
 import re, subprocess, sys, urllib.request, urllib.error
+import random
+import time
 
 HERE=Path(__file__).resolve().parent
 PROJECT=HERE.parent
@@ -79,11 +81,24 @@ def gemini(facts,model,key):
     url=f'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent'
     req=urllib.request.Request(url,method='POST',data=json.dumps(request,ensure_ascii=False).encode('utf-8'),
                                headers={'Content-Type':'application/json','x-goog-api-key':key})
-    try:
-        with urllib.request.urlopen(req,timeout=55) as resp:
-            payload=json.loads(resp.read(1024*1024))
-    except urllib.error.HTTPError as e:raise StopV42(f'Gemini HTTP {e.code}; check model permissions or quota') from None
-    except (urllib.error.URLError,TimeoutError) as e:raise StopV42('Gemini network error or timeout') from None
+    for attempt in range(4):
+        try:
+            with urllib.request.urlopen(req,timeout=55) as resp:
+                payload=json.loads(resp.read(1024*1024))
+            break
+        except urllib.error.HTTPError as error:
+            code=error.code
+            error.close()
+            if code not in (408,429,500,502,503,504):
+                raise StopV42(f'Gemini HTTP {code}; request rejected') from None
+            failure=f'Gemini HTTP {code}; temporary service failure'
+        except (urllib.error.URLError,TimeoutError):
+            failure='Gemini network error or timeout'
+        if attempt==3:
+            raise StopV42(failure+' after 4 attempts') from None
+        delay=2**(attempt+1)+random.uniform(0,1)
+        print(f'{failure}; retry {attempt+1}/3 in {delay:.1f}s',flush=True)
+        time.sleep(delay)
     try:
         cand=payload['candidates'][0]
         reason=cand.get('finishReason','')

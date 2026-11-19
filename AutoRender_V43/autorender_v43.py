@@ -14,6 +14,7 @@ from pathlib import Path
 import sqlite3
 import subprocess
 import sys
+import tempfile
 
 ROOT=Path(__file__).resolve().parent
 PROJECT=ROOT.parent
@@ -33,9 +34,14 @@ def iso_now():return utcnow().isoformat()
 def read(path):return json.loads(Path(path).read_text(encoding='utf-8-sig'))
 def write_json(path,obj):
     path=Path(path);path.parent.mkdir(parents=True,exist_ok=True)
-    t=path.with_suffix(path.suffix+'.tmp')
-    t.write_text(json.dumps(obj,ensure_ascii=False,indent=2),encoding='utf-8')
-    t.replace(path)
+    with tempfile.NamedTemporaryFile(mode='w',encoding='utf-8',dir=path.parent,
+                                     prefix=path.name+'.',suffix='.tmp',delete=False) as stream:
+        temporary=Path(stream.name)
+        json.dump(obj,stream,ensure_ascii=False,indent=2)
+    try:
+        temporary.replace(path)
+    finally:
+        temporary.unlink(missing_ok=True)
 def load_mod(path,name):
     if not path.is_file():raise V43Error('Missing module: '+str(path))
     spec=importlib.util.spec_from_file_location(name,str(path))
@@ -47,6 +53,8 @@ def db_open():
     conn=sqlite3.connect(str(STATE),timeout=15,isolation_level=None)
     conn.execute('PRAGMA busy_timeout=15000')
     conn.execute('CREATE TABLE IF NOT EXISTS runs (event_key TEXT PRIMARY KEY, status TEXT NOT NULL, attempts INTEGER NOT NULL, last_error TEXT, rendered_at TEXT, updated_at TEXT NOT NULL)')
+    # Keep existing installations and their attempt counts intact.
+    conn.execute('CREATE TABLE IF NOT EXISTS previews (event_key TEXT PRIMARY KEY, mp4 TEXT NOT NULL, mp4_sha256 TEXT NOT NULL, receipt TEXT NOT NULL, review_status TEXT NOT NULL, reviewed_at TEXT)')
     return conn
 
 def status_for(conn,key):
@@ -67,6 +75,84 @@ def claim(conn,key):
 
 def complete(conn,key,ok,error=None):
     conn.execute('UPDATE runs SET status=?,last_error=?,rendered_at=?,updated_at=? WHERE event_key=?',('SUCCEEDED' if ok else 'FAILED',error,None if not ok else iso_now(),iso_now(),key))
+
+
+def file_sha(path):
+    with Path(path).open('rb') as stream:
+        return hashlib.file_digest(stream,'sha256').hexdigest()
+
+
+def validate_movie(path):
+    movie=Path(path).resolve()
+    if not movie.is_file() or movie.stat().st_size<1024:
+        raise V43Error('MP4 output missing or too small')
+    probe=subprocess.run(['ffprobe','-v','error','-show_entries',
+                          'stream=codec_type:format=duration','-of','json',str(movie)],
+                         capture_output=True,timeout=30,check=False)
+    if probe.returncode!=0:
+        raise V43Error('MP4 could not be read by ffprobe')
+    metadata=json.loads(probe.stdout)
+    tracks={track.get('codec_type') for track in metadata.get('streams',[])}
+    if not {'video','audio'}<=tracks or float(metadata.get('format',{}).get('duration',0))<=0:
+        raise V43Error('MP4 requires video, audio and positive duration')
+    return movie,file_sha(movie)
+
+
+def save_preview(conn,key,movie,digest,receipt,reviewed=False):
+    conn.execute('INSERT INTO previews VALUES(?,?,?,?,?,?) ON CONFLICT(event_key) DO UPDATE SET '
+                 'mp4=excluded.mp4,mp4_sha256=excluded.mp4_sha256,receipt=excluded.receipt, '
+                 'review_status=excluded.review_status,reviewed_at=COALESCE(previews.reviewed_at,excluded.reviewed_at)',
+                 (key,str(movie),digest,str(receipt),'APPROVED' if reviewed else 'PENDING',
+                  iso_now() if reviewed else None))
+
+
+def preview_fields(conn,key):
+    row=conn.execute('SELECT mp4,mp4_sha256,receipt,review_status,reviewed_at FROM previews WHERE event_key=?',(key,)).fetchone()
+    if not row:return {}
+    return dict(zip(('mp4','mp4_sha256','receipt','review_status','reviewed_at'),row))
+
+
+def adopt_preview(receipt_path,reviewed=False):
+    """Register an existing V4.2 preview, including an explicit human review."""
+    receipt_path=Path(receipt_path).resolve()
+    receipt=read(receipt_path)
+    key=receipt.get('event_key')
+    if not isinstance(key,str) or not key.strip():raise V43Error('Receipt event key missing')
+    if receipt.get('preview_only') is not True or receipt.get('publication_approved') is not False or receipt.get('auto_upload') is not False:
+        raise V43Error('Requires an internal-preview receipt')
+    mod=load_mod(V42,'renderer_v42_adopt')
+    snapshot=read(receipt_path.parent/'source_fact_snapshot.json')
+    if snapshot.get('event_key')!=key or mod.canonical_sha(snapshot)!=receipt.get('snapshot_sha256'):
+        raise V43Error('Receipt fact snapshot mismatch')
+    approval,reason=approved_for_key(key)
+    if reason:raise V43Error(reason)
+    if mod.canonical_sha(read(approval))!=receipt['snapshot_sha256']:
+        raise V43Error('Current approval differs from rendered facts')
+    facts,scenes,folder=mod.load_checked_draft(approval)
+    script='\n'.join(scene['narration'] for scene in scenes)
+    if folder.resolve()!=receipt_path.parent or hashlib.sha256(script.encode('utf-8')).hexdigest()!=receipt.get('narration_sha256'):
+        raise V43Error('Receipt narration mismatch')
+    movie,digest=validate_movie(receipt['mp4_path'])
+    conn=db_open()
+    try:
+        conn.execute('BEGIN IMMEDIATE')
+        existing=status_for(conn,key)
+        if existing and existing[0]=='RUNNING':raise V43Error('Event is currently running')
+        previous=preview_fields(conn,key)
+        if previous and previous['mp4_sha256']!=digest:
+            raise V43Error('A different preview is already registered for this event')
+        reviewed=reviewed or previous.get('review_status')=='APPROVED'
+        conn.execute('INSERT INTO runs(event_key,status,attempts,rendered_at,updated_at) VALUES(?,?,?,?,?) '
+                     'ON CONFLICT(event_key) DO UPDATE SET status=excluded.status,last_error=NULL, '
+                     'rendered_at=excluded.rendered_at,updated_at=excluded.updated_at',
+                     (key,'SUCCEEDED',0,receipt['created_at'],iso_now()))
+        save_preview(conn,key,movie,digest,receipt_path,reviewed)
+        conn.execute('COMMIT')
+        return report('PREVIEW_REVIEWED' if reviewed else 'PREVIEW_READY',event_key=key,**preview_fields(conn,key))
+    except Exception:
+        if conn.in_transaction:conn.execute('ROLLBACK')
+        raise
+    finally:conn.close()
 
 def selected_event():
     if not WEEKLY.is_file():return None,'WEEKLY_REPORT_MISSING'
@@ -120,12 +206,22 @@ def secret(name):
 def run_weekly(dry_run=False):
     key,reason=selected_event()
     if reason:return report('WAITING_REVIEW',reason=reason)
-    path,reason=approved_for_key(key)
-    if reason:return report('WAITING_REVIEW',event_key=key,reason=reason)
     conn=db_open()
     try:
         existing=status_for(conn,key)
-        if existing and existing[0]=='SUCCEEDED':return report('ALREADY_RENDERED',event_key=key)
+        if existing and existing[0]=='SUCCEEDED':
+            fields=preview_fields(conn,key)
+            if fields:
+                try:
+                    movie,digest=validate_movie(fields['mp4'])
+                    if digest!=fields['mp4_sha256']:raise V43Error('MP4 content changed')
+                except (V43Error,OSError,ValueError,subprocess.SubprocessError):
+                    return report('OUTPUT_INVALID',event_key=key,reason='Registered MP4 missing, changed or unreadable')
+            return report('ALREADY_RENDERED',event_key=key,**fields)
+        path,reason=approved_for_key(key)
+        if reason:return report('WAITING_REVIEW',event_key=key,reason=reason)
+        if existing and existing[0]=='RUNNING':return report('SKIPPED',event_key=key,reason='RUNNING')
+        if existing and existing[1]>=3:return report('SKIPPED',event_key=key,reason='RETRIES_EXHAUSTED')
         if dry_run:return report('READY_TO_RENDER',event_key=key,reviewed_filename=path.name)
         claimed,why=claim(conn,key)
         if not claimed:return report('SKIPPED',event_key=key,reason=why)
@@ -142,20 +238,24 @@ def run_weekly(dry_run=False):
             finally:
                 if previous is None:os.environ.pop('AZURE_SPEECH_KEY',None)
                 else:os.environ['AZURE_SPEECH_KEY']=previous
-            movie=Path(movie)
-            if not movie.is_file() or movie.stat().st_size<1024:raise V43Error('MP4 output missing or too small')
+            movie,digest=validate_movie(movie)
+            receipt=mod.OUTPUT/read(path)['slug']/'render_receipt.json'
+            conn.execute('BEGIN IMMEDIATE')
+            save_preview(conn,key,movie,digest,receipt)
             complete(conn,key,True)
-            return report('PREVIEW_READY',event_key=key,mp4=str(movie))
+            conn.execute('COMMIT')
         except Exception as exc:
+            if conn.in_transaction:conn.execute('ROLLBACK')
             # Keep errors generic: external services sometimes include sensitive request data.
             complete(conn,key,False,type(exc).__name__)
             return report('RENDER_FAILED',event_key=key,reason='See local renderer diagnostic; no publication performed',exception_type=type(exc).__name__)
+        return report('PREVIEW_READY',event_key=key,**preview_fields(conn,key))
     finally:conn.close()
 
 def reset(key):
     conn=db_open()
     try:
-        changed=conn.execute("UPDATE runs SET status='FAILED',attempts=0,last_error='MANUAL_RETRY',updated_at=? WHERE event_key=? AND status!='RUNNING'",(iso_now(),key)).rowcount
+        changed=conn.execute("UPDATE runs SET status='FAILED',attempts=0,last_error='MANUAL_RETRY',updated_at=? WHERE event_key=? AND status='FAILED'",(iso_now(),key)).rowcount
         print('RESET:',changed,'entry; retry only after reviewing error and approval status')
     finally:conn.close()
 
@@ -169,6 +269,8 @@ def status():
         c=db_open()
         try:
             for r in c.execute('SELECT event_key,status,attempts FROM runs ORDER BY updated_at DESC LIMIT 5'):print('EVENT:',*r)
+            if key:
+                for field,value in preview_fields(c,key).items():print(field+':',value)
         finally:c.close()
     print('Never uploads to YouTube; no publication approvals generated')
 
@@ -199,14 +301,19 @@ def main():
     sub=ap.add_subparsers(dest='cmd',required=True)
     sub.add_parser('status');sub.add_parser('selftest');sub.add_parser('weekly');sub.add_parser('dry-run')
     rp=sub.add_parser('retry');rp.add_argument('--event-key',required=True)
+    adopt=sub.add_parser('adopt-preview',help='Register a completed V4.2 preview')
+    adopt.add_argument('--receipt',required=True)
+    adopt.add_argument('--reviewed',action='store_true',help='Record explicit human acceptance of this preview')
     args=ap.parse_args()
     try:
         if args.cmd=='status':status()
         elif args.cmd=='selftest':selftest()
-        elif args.cmd=='weekly':run_weekly()
-        elif args.cmd=='dry-run':run_weekly(True)
+        elif args.cmd in ('weekly','dry-run'):
+            result=run_weekly(args.cmd=='dry-run')
+            if result['stage'] in ('RENDER_FAILED','OUTPUT_INVALID'):return 2
         elif args.cmd=='retry':reset(args.event_key)
+        elif args.cmd=='adopt-preview':adopt_preview(args.receipt,args.reviewed)
         return 0
-    except (V43Error,ValueError,OSError,sqlite3.Error) as e:
+    except (V43Error,ValueError,KeyError,OSError,sqlite3.Error,subprocess.SubprocessError) as e:
         print('V4.3 ERROR:',str(e),file=sys.stderr);return 2
 if __name__=='__main__':sys.exit(main())
