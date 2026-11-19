@@ -60,12 +60,12 @@
       "note": "已修正第 02–05 場景字幕與條款提示小字重疊，待 Muse 審核"
     }
   },
-  "status": "pending",
+  "status": "returned",
   "decision": {
-    "result": "pending",
-    "by": null,
-    "at": null,
-    "note": "新版已加入雅高及國泰官方 logo 並修正字幕重疊，待 Muse 重新審核；原版 LEE 退回決定保留於 cbe8e0f。"
+    "result": "returned",
+    "by": "LEE",
+    "at": "2026-11-19T23:55:28Z",
+    "note": "1. 場景 02 字幕在「Rewa/rd Points」處斷詞——請讓 Reward Points 保持完整不斷詞，換行只能在詞與詞之間。\n2. 場景 03 與 05 的大字內文被截掉一句——請調整字體大小或行數，讓內文完整顯示（字幕帶的內容是完整的，大字也要完整）。"
   },
   "publication_approved": false
 }
