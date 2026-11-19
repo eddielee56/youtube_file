@@ -3,13 +3,13 @@
   "title": "雅高 × 國泰｜優惠試播",
   "program": "ALL Accor × Cathay Asia Miles",
   "video": {
-    "repo_path": "previews/accor-cathay/AutoRender_V21_DEMO_VOICE_NOT_FOR_PUBLISHING.mp4",
-    "raw_url": "https://raw.githubusercontent.com/eddielee56/youtube_file/67ba0960e232678c0168cabde54cd98a7a52eba0/previews/accor-cathay/AutoRender_V21_DEMO_VOICE_NOT_FOR_PUBLISHING.mp4",
+    "repo_path": "previews/accor-cathay/accor_cathay_preview_rev2.mp4",
+    "raw_url": "https://raw.githubusercontent.com/eddielee56/youtube_file/6ef19028813b3ad70c29831e2c6229493622e47e/previews/accor-cathay/accor_cathay_preview_rev2.mp4",
     "duration_s": 50.367,
     "width": 540,
     "height": 960,
-    "version": "67ba096",
-    "commit_sha": "67ba0960e232678c0168cabde54cd98a7a52eba0"
+    "version": "6ef1902",
+    "commit_sha": "6ef19028813b3ad70c29831e2c6229493622e47e"
   },
   "facts": {
     "headline": "合格住宿額外獲得50% Reward Points",
@@ -49,7 +49,7 @@
     },
     "copyright": {
       "status": "pending",
-      "note": "待 Muse 審核"
+      "note": "官方標誌來源與檔案雜湊記錄於 AutoRender_V42/assets/brands/sources.json，待 Muse 審核"
     },
     "sensitive": {
       "status": "pending",
@@ -57,15 +57,15 @@
     },
     "quality": {
       "status": "pending",
-      "note": "待 Muse 審核"
+      "note": "已修正第 02–05 場景字幕與條款提示小字重疊，待 Muse 審核"
     }
   },
-  "status": "returned",
+  "status": "pending",
   "decision": {
-    "result": "returned",
-    "by": "LEE",
-    "at": "2026-11-19T13:30:16Z",
-    "note": "加上雅高及國泰的logo"
+    "result": "pending",
+    "by": null,
+    "at": null,
+    "note": "新版已加入雅高及國泰官方 logo 並修正字幕重疊，待 Muse 重新審核；原版 LEE 退回決定保留於 cbe8e0f。"
   },
   "publication_approved": false
 }
