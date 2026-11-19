@@ -193,6 +193,17 @@ class PreviewRegistration(unittest.TestCase):
             self.assertEqual(scheduler.run_weekly()['stage'], 'ALREADY_RENDERED')
             render.assert_called_once()
 
+    def test_revised_rejected_preview_requires_a_new_review(self):
+        scheduler.adopt_preview(self.receipt, reviewed=True)
+        with contextlib.closing(scheduler.db_open()) as conn:
+            conn.execute("UPDATE previews SET review_status='CHANGES_REQUESTED' WHERE event_key=?", (self.key,))
+        self.movie.write_bytes(b'new-version' * 300)
+        with self.assertRaises(scheduler.V43Error):
+            scheduler.adopt_preview(self.receipt)
+        result = scheduler.adopt_preview(self.receipt, replace=True)
+        self.assertEqual(result['review_status'], 'PENDING')
+        self.assertIsNone(result['reviewed_at'])
+
 
 if __name__ == '__main__':
     unittest.main()

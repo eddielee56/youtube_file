@@ -30,3 +30,43 @@ AutoRender V4.3 — 每週已審核優惠自動產生「內部試播」
 - 注意：使用 Gemini/Azure API 可能產生費用；請自行在服務商後台設定預算與配額。
 - 只有自己信任、經過檢查的程式才應使用解除執行政策的 PowerShell 指令。
 - 本套件沒有修改你原有的任何版本檔案，不會自動啟用排程。
+
+
+2026-11-19 審核與通知更新
+
+雙擊 open_review.cmd，會啟動本機審核服務並開啟瀏覽器。服務僅接受 127.0.0.1 連線。
+頁面提供影片播放、旁白、官方來源、查核日期、期限及審閱紀錄。
+通過與退回都綁定該支 MP4 的 SHA256，退回時須填寫原因。
+既有的 APPROVED 狀態會保留，原有登錄時間顯示於頁面中。
+關閉命令視窗或按 Ctrl+C 可停止服務。
+
+每週製片會更新 output/review_queue.json，並透過 V3.8 已啟用的 Gmail 設定寄給自己。
+完成、失敗、檔案異常與等待優惠資料審核都有通知紀錄。
+重複執行同一個完成結果會使用同一則通知紀錄。
+SMTP 寄送失敗時，通知保留為 FAILED，避免不確定是否送達時自動重複寄送。
+output/last_notification.json 顯示寄送結果，失敗不會抹除已完成的製片狀態。
+
+在 AutoRender_V43 目錄執行
+
+py -3.12 autorender_v43.py review-queue
+py -3.12 autorender_v43.py review
+py -3.12 autorender_v43.py notify --dry-run
+py -3.12 autorender_v43.py notify
+
+需要以命令列記錄審核時，使用 review-preview 並填入 review_queue.json 中的 event_key 和 SHA256
+
+py -3.12 autorender_v43.py review-preview --event-key "事件鍵" --sha256 "影片雜湊" --decision approve
+py -3.12 autorender_v43.py review-preview --event-key "事件鍵" --sha256 "影片雜湊" --decision reject --note "修改原因"
+
+退回後先修正素材與核准資料，再用 retry --event-key "事件鍵" 開放下一次製片。
+若修正版由 V4.2 另外產生，使用 adopt-preview --receipt "修正版收據路徑" --replace。
+新版本會重新進入 PENDING，原版本的審核歷史仍會保留。
+已通過的成片仍受到重複製片保護。
+
+確認失敗通知確實未送達後，可執行 notify --retry-failed。
+若狀態停在 SENDING，請先核對 Gmail 寄件備份，再處理該筆寄送紀錄。
+審閱通過會記錄內容審核結果，正式發布仍依 publication_approved 欄位管理。
+
+回歸測試
+
+py -3.12 -B -m unittest discover -s . -p "test_*.py"

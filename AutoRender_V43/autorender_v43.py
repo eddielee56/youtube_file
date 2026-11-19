@@ -101,7 +101,9 @@ def validate_movie(path):
 def save_preview(conn,key,movie,digest,receipt,reviewed=False):
     conn.execute('INSERT INTO previews VALUES(?,?,?,?,?,?) ON CONFLICT(event_key) DO UPDATE SET '
                  'mp4=excluded.mp4,mp4_sha256=excluded.mp4_sha256,receipt=excluded.receipt, '
-                 'review_status=excluded.review_status,reviewed_at=COALESCE(previews.reviewed_at,excluded.reviewed_at)',
+                 'review_status=excluded.review_status,reviewed_at=CASE '
+                 'WHEN previews.mp4_sha256=excluded.mp4_sha256 THEN COALESCE(previews.reviewed_at,excluded.reviewed_at) '
+                 'ELSE excluded.reviewed_at END',
                  (key,str(movie),digest,str(receipt),'APPROVED' if reviewed else 'PENDING',
                   iso_now() if reviewed else None))
 
@@ -112,7 +114,7 @@ def preview_fields(conn,key):
     return dict(zip(('mp4','mp4_sha256','receipt','review_status','reviewed_at'),row))
 
 
-def adopt_preview(receipt_path,reviewed=False):
+def adopt_preview(receipt_path,reviewed=False,replace=False):
     """Register an existing V4.2 preview, including an explicit human review."""
     receipt_path=Path(receipt_path).resolve()
     receipt=read(receipt_path)
@@ -139,14 +141,17 @@ def adopt_preview(receipt_path,reviewed=False):
         existing=status_for(conn,key)
         if existing and existing[0]=='RUNNING':raise V43Error('Event is currently running')
         previous=preview_fields(conn,key)
-        if previous and previous['mp4_sha256']!=digest:
-            raise V43Error('A different preview is already registered for this event')
-        reviewed=reviewed or previous.get('review_status')=='APPROVED'
+        changed=bool(previous and previous['mp4_sha256']!=digest)
+        if changed and not (replace and previous['review_status']=='CHANGES_REQUESTED'):
+            raise V43Error('A different preview is registered; reject the old version and use --replace')
+        reviewed=reviewed or (not changed and previous.get('review_status')=='APPROVED')
         conn.execute('INSERT INTO runs(event_key,status,attempts,rendered_at,updated_at) VALUES(?,?,?,?,?) '
                      'ON CONFLICT(event_key) DO UPDATE SET status=excluded.status,last_error=NULL, '
                      'rendered_at=excluded.rendered_at,updated_at=excluded.updated_at',
                      (key,'SUCCEEDED',0,receipt['created_at'],iso_now()))
         save_preview(conn,key,movie,digest,receipt_path,reviewed)
+        if not changed and previous.get('review_status')=='CHANGES_REQUESTED' and not reviewed:
+            conn.execute("UPDATE previews SET review_status='CHANGES_REQUESTED' WHERE event_key=?",(key,))
         conn.execute('COMMIT')
         return report('PREVIEW_REVIEWED' if reviewed else 'PREVIEW_READY',event_key=key,**preview_fields(conn,key))
     except Exception:
@@ -255,7 +260,10 @@ def run_weekly(dry_run=False):
 def reset(key):
     conn=db_open()
     try:
-        changed=conn.execute("UPDATE runs SET status='FAILED',attempts=0,last_error='MANUAL_RETRY',updated_at=? WHERE event_key=? AND status='FAILED'",(iso_now(),key)).rowcount
+        changed=conn.execute("UPDATE runs SET status='FAILED',attempts=0,last_error='MANUAL_RETRY',updated_at=? "
+                             "WHERE event_key=? AND (status='FAILED' OR (status='SUCCEEDED' AND EXISTS "
+                             "(SELECT 1 FROM previews p WHERE p.event_key=runs.event_key AND p.review_status='CHANGES_REQUESTED')))",
+                             (iso_now(),key)).rowcount
         print('RESET:',changed,'entry; retry only after reviewing error and approval status')
     finally:conn.close()
 
@@ -304,15 +312,53 @@ def main():
     adopt=sub.add_parser('adopt-preview',help='Register a completed V4.2 preview')
     adopt.add_argument('--receipt',required=True)
     adopt.add_argument('--reviewed',action='store_true',help='Record explicit human acceptance of this preview')
+    adopt.add_argument('--replace',action='store_true',help='Register a revised movie after the previous version was rejected')
+    sub.add_parser('review-queue',help='Refresh the local review queue')
+    review=sub.add_parser('review',help='Open the local video review page')
+    review.add_argument('--port',type=int,default=8765)
+    review.add_argument('--no-browser',action='store_true')
+    decision=sub.add_parser('review-preview',help='Record a decision for an exact movie version')
+    decision.add_argument('--event-key',required=True)
+    decision.add_argument('--sha256',required=True)
+    decision.add_argument('--decision',choices=('approve','reject'),required=True)
+    decision.add_argument('--note',default='')
+    notification=sub.add_parser('notify',help='Deliver queued completion or failure messages to your configured Gmail')
+    notification.add_argument('--dry-run',action='store_true')
+    notification.add_argument('--retry-failed',action='store_true',help='Resend failed deliveries; an ambiguous SMTP failure may already have delivered mail')
     args=ap.parse_args()
     try:
         if args.cmd=='status':status()
         elif args.cmd=='selftest':selftest()
         elif args.cmd in ('weekly','dry-run'):
             result=run_weekly(args.cmd=='dry-run')
+            if args.cmd=='weekly':
+                import autorender_review
+                delivery=autorender_review.finish(result)
             if result['stage'] in ('RENDER_FAILED','OUTPUT_INVALID'):return 2
+            if args.cmd=='weekly' and (delivery['status'] in ('SETUP_FAILED','FAILED') or delivery.get('unresolved')):return 3
         elif args.cmd=='retry':reset(args.event_key)
-        elif args.cmd=='adopt-preview':adopt_preview(args.receipt,args.reviewed)
+        elif args.cmd=='adopt-preview':
+            result=adopt_preview(args.receipt,args.reviewed,args.replace)
+            import autorender_review
+            delivery=autorender_review.finish(result)
+            if delivery['status'] in ('SETUP_FAILED','FAILED') or delivery.get('unresolved'):return 3
+        elif args.cmd=='review':
+            import review_server
+            review_server.serve(args.port,not args.no_browser)
+        elif args.cmd=='review-queue':
+            import autorender_review
+            data=autorender_review.review_queue()
+            print('REVIEW QUEUE:',len(data['items']),'items;',OUTPUT/'review_queue.json')
+        elif args.cmd=='review-preview':
+            import autorender_review
+            autorender_review.decide(args.event_key,args.sha256,args.decision,args.note)
+            print('REVIEW SAVED:',args.decision)
+        elif args.cmd=='notify':
+            import autorender_review
+            delivery=autorender_review.notify(args.dry_run,args.retry_failed)
+            autorender_review.review_queue()
+            print('NOTIFICATION:',delivery['status'])
+            if delivery['status'] in ('SETUP_FAILED','FAILED') or delivery.get('unresolved'):return 3
         return 0
     except (V43Error,ValueError,KeyError,OSError,sqlite3.Error,subprocess.SubprocessError) as e:
         print('V4.3 ERROR:',str(e),file=sys.stderr);return 2
