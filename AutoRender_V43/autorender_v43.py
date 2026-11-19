@@ -99,23 +99,30 @@ def validate_movie(path):
 
 
 def save_preview(conn,key,movie,digest,receipt,reviewed=False):
+    if reviewed:raise V43Error('Local review decisions are disabled; use the Muse review page')
     conn.execute('INSERT INTO previews VALUES(?,?,?,?,?,?) ON CONFLICT(event_key) DO UPDATE SET '
                  'mp4=excluded.mp4,mp4_sha256=excluded.mp4_sha256,receipt=excluded.receipt, '
-                 'review_status=excluded.review_status,reviewed_at=CASE '
-                 'WHEN previews.mp4_sha256=excluded.mp4_sha256 THEN COALESCE(previews.reviewed_at,excluded.reviewed_at) '
-                 'ELSE excluded.reviewed_at END',
-                 (key,str(movie),digest,str(receipt),'APPROVED' if reviewed else 'PENDING',
-                  iso_now() if reviewed else None))
+                 'review_status=excluded.review_status,reviewed_at=NULL',
+                 (key,str(movie),digest,str(receipt),'PENDING',None))
 
 
 def preview_fields(conn,key):
-    row=conn.execute('SELECT mp4,mp4_sha256,receipt,review_status,reviewed_at FROM previews WHERE event_key=?',(key,)).fetchone()
+    row=conn.execute('SELECT mp4,mp4_sha256,receipt FROM previews WHERE event_key=?',(key,)).fetchone()
     if not row:return {}
-    return dict(zip(('mp4','mp4_sha256','receipt','review_status','reviewed_at'),row))
+    fields=dict(zip(('mp4','mp4_sha256','receipt'),row))
+    import autorender_review
+    record=autorender_review.read_review(key)
+    matches=record is not None and autorender_review.record_matches_movie(record,fields['mp4_sha256'])
+    fields.update(review_status=record['status'] if matches else 'pending',
+                  reviewed_at=record['decision']['at'] if matches else None,
+                  review_source='Muse',publication_approved=record['publication_approved'] if matches else False,
+                  review_file=str(autorender_review.review_path(key)))
+    return fields
 
 
 def adopt_preview(receipt_path,reviewed=False,replace=False):
-    """Register an existing V4.2 preview, including an explicit human review."""
+    """Register an existing V4.2 render. Muse owns the review decision."""
+    if reviewed:raise V43Error('Local review decisions are disabled; use the Muse review page')
     receipt_path=Path(receipt_path).resolve()
     receipt=read(receipt_path)
     key=receipt.get('event_key')
@@ -142,18 +149,15 @@ def adopt_preview(receipt_path,reviewed=False,replace=False):
         if existing and existing[0]=='RUNNING':raise V43Error('Event is currently running')
         previous=preview_fields(conn,key)
         changed=bool(previous and previous['mp4_sha256']!=digest)
-        if changed and not (replace and previous['review_status']=='CHANGES_REQUESTED'):
+        if changed and not (replace and previous['review_status']=='returned'):
             raise V43Error('A different preview is registered; reject the old version and use --replace')
-        reviewed=reviewed or (not changed and previous.get('review_status')=='APPROVED')
         conn.execute('INSERT INTO runs(event_key,status,attempts,rendered_at,updated_at) VALUES(?,?,?,?,?) '
                      'ON CONFLICT(event_key) DO UPDATE SET status=excluded.status,last_error=NULL, '
                      'rendered_at=excluded.rendered_at,updated_at=excluded.updated_at',
                      (key,'SUCCEEDED',0,receipt['created_at'],iso_now()))
-        save_preview(conn,key,movie,digest,receipt_path,reviewed)
-        if not changed and previous.get('review_status')=='CHANGES_REQUESTED' and not reviewed:
-            conn.execute("UPDATE previews SET review_status='CHANGES_REQUESTED' WHERE event_key=?",(key,))
+        save_preview(conn,key,movie,digest,receipt_path)
         conn.execute('COMMIT')
-        return report('PREVIEW_REVIEWED' if reviewed else 'PREVIEW_READY',event_key=key,**preview_fields(conn,key))
+        return report('PREVIEW_READY',event_key=key,**preview_fields(conn,key))
     except Exception:
         if conn.in_transaction:conn.execute('ROLLBACK')
         raise
@@ -260,10 +264,10 @@ def run_weekly(dry_run=False):
 def reset(key):
     conn=db_open()
     try:
+        returned=preview_fields(conn,key).get('review_status')=='returned'
         changed=conn.execute("UPDATE runs SET status='FAILED',attempts=0,last_error='MANUAL_RETRY',updated_at=? "
-                             "WHERE event_key=? AND (status='FAILED' OR (status='SUCCEEDED' AND EXISTS "
-                             "(SELECT 1 FROM previews p WHERE p.event_key=runs.event_key AND p.review_status='CHANGES_REQUESTED')))",
-                             (iso_now(),key)).rowcount
+                             "WHERE event_key=? AND (status='FAILED' OR (status='SUCCEEDED' AND ?))",
+                             (iso_now(),key,returned)).rowcount
         print('RESET:',changed,'entry; retry only after reviewing error and approval status')
     finally:conn.close()
 
@@ -311,20 +315,22 @@ def main():
     rp=sub.add_parser('retry');rp.add_argument('--event-key',required=True)
     adopt=sub.add_parser('adopt-preview',help='Register a completed V4.2 preview')
     adopt.add_argument('--receipt',required=True)
-    adopt.add_argument('--reviewed',action='store_true',help='Record explicit human acceptance of this preview')
+    adopt.add_argument('--reviewed',action='store_true',help='Disabled legacy flag; decisions belong to Muse')
     adopt.add_argument('--replace',action='store_true',help='Register a revised movie after the previous version was rejected')
-    sub.add_parser('review-queue',help='Refresh the local review queue')
-    review=sub.add_parser('review',help='Open the local video review page')
-    review.add_argument('--port',type=int,default=8765)
-    review.add_argument('--no-browser',action='store_true')
-    decision=sub.add_parser('review-preview',help='Record a decision for an exact movie version')
-    decision.add_argument('--event-key',required=True)
-    decision.add_argument('--sha256',required=True)
-    decision.add_argument('--decision',choices=('approve','reject'),required=True)
-    decision.add_argument('--note',default='')
-    notification=sub.add_parser('notify',help='Deliver queued completion or failure messages to your configured Gmail')
+    sub.add_parser('review-queue',help='List the authoritative reviews in the Git repository')
+    sub.add_parser('review',help='Explain the Muse-only review entry point')
+    prepare=sub.add_parser('prepare-review',help='Prepare a pending Muse record for a video already in Git')
+    prepare.add_argument('--offer',required=True)
+    prepare.add_argument('--video',required=True)
+    prepare.add_argument('--repo-path',required=True)
+    prepare.add_argument('--commit-sha',required=True)
+    decision=sub.add_parser('import-muse-review',help='Write a complete Muse review record to the repository')
+    decision.add_argument('--file',required=True)
+    decision.add_argument('--expected-version',required=True)
+    sub.add_parser('validate-reviews',help='Validate the repository review records')
+    notification=sub.add_parser('notify',help='Gmail disabled; completion events are handed to Muse')
     notification.add_argument('--dry-run',action='store_true')
-    notification.add_argument('--retry-failed',action='store_true',help='Resend failed deliveries; an ambiguous SMTP failure may already have delivered mail')
+    notification.add_argument('--retry-failed',action='store_true',help='Disabled legacy Gmail option')
     args=ap.parse_args()
     try:
         if args.cmd=='status':status()
@@ -333,32 +339,32 @@ def main():
             result=run_weekly(args.cmd=='dry-run')
             if args.cmd=='weekly':
                 import autorender_review
-                delivery=autorender_review.finish(result)
+                autorender_review.finish(result)
             if result['stage'] in ('RENDER_FAILED','OUTPUT_INVALID'):return 2
-            if args.cmd=='weekly' and (delivery['status'] in ('SETUP_FAILED','FAILED') or delivery.get('unresolved')):return 3
         elif args.cmd=='retry':reset(args.event_key)
         elif args.cmd=='adopt-preview':
             result=adopt_preview(args.receipt,args.reviewed,args.replace)
             import autorender_review
-            delivery=autorender_review.finish(result)
-            if delivery['status'] in ('SETUP_FAILED','FAILED') or delivery.get('unresolved'):return 3
+            autorender_review.finish(result)
         elif args.cmd=='review':
-            import review_server
-            review_server.serve(args.port,not args.no_browser)
-        elif args.cmd=='review-queue':
+            print('Local review page disabled. Review decisions are made on the Muse review page.')
+        elif args.cmd in ('review-queue','validate-reviews'):
             import autorender_review
-            data=autorender_review.review_queue()
-            print('REVIEW QUEUE:',len(data['items']),'items;',OUTPUT/'review_queue.json')
-        elif args.cmd=='review-preview':
+            for path in sorted((autorender_review.repository()/'reviews').glob('*.review.json')):
+                record=autorender_review.validate(read(path))
+                if autorender_review.review_path(record['event_key'])!=path:raise V43Error('Review filename mismatch')
+                print('MUSE REVIEW:',record['status'],path)
+        elif args.cmd=='prepare-review':
             import autorender_review
-            autorender_review.decide(args.event_key,args.sha256,args.decision,args.note)
-            print('REVIEW SAVED:',args.decision)
+            record=autorender_review.build_record(read(args.offer),args.video,args.repo_path,args.commit_sha)
+            autorender_review.prepare_review(record)
+            print('MUSE REVIEW:',autorender_review.review_path(record['event_key']))
+        elif args.cmd=='import-muse-review':
+            import autorender_review
+            record=autorender_review.import_muse_review(read(args.file),args.expected_version)
+            print('MUSE REVIEW SAVED:',record['status'],autorender_review.review_path(record['event_key']))
         elif args.cmd=='notify':
-            import autorender_review
-            delivery=autorender_review.notify(args.dry_run,args.retry_failed)
-            autorender_review.review_queue()
-            print('NOTIFICATION:',delivery['status'])
-            if delivery['status'] in ('SETUP_FAILED','FAILED') or delivery.get('unresolved'):return 3
+            print('GMAIL_DISABLED: completion and failure notifications belong to Muse conversations.')
         return 0
     except (V43Error,ValueError,KeyError,OSError,sqlite3.Error,subprocess.SubprocessError) as e:
         print('V4.3 ERROR:',str(e),file=sys.stderr);return 2

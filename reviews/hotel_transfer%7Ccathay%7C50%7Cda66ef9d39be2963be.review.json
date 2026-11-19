@@ -1,0 +1,71 @@
+{
+  "event_key": "hotel_transfer|cathay|50|da66ef9d39be2963be",
+  "title": "雅高 × 國泰｜優惠試播",
+  "program": "ALL Accor × Cathay Asia Miles",
+  "video": {
+    "repo_path": "previews/accor-cathay/AutoRender_V21_DEMO_VOICE_NOT_FOR_PUBLISHING.mp4",
+    "raw_url": "https://raw.githubusercontent.com/eddielee56/youtube_file/d1cff779b2725d3101512a7c75065e0fd7694a19/previews/accor-cathay/AutoRender_V21_DEMO_VOICE_NOT_FOR_PUBLISHING.mp4",
+    "duration_s": 50.367,
+    "width": 540,
+    "height": 960,
+    "version": "sha256:b54b012799a9653fdc204184fcc7988aca9cf9c56c265ec651218e17791001f3",
+    "commit_sha": "d1cff779b2725d3101512a7c75065e0fd7694a19"
+  },
+  "facts": {
+    "headline": "合格住宿額外獲得50% Reward Points",
+    "benefit": "加碼的是飯店住宿點數，不是轉哩程加送五成。",
+    "eligibility": "入住前設定 Asia Miles 自動轉換；需合格訂房，至少住一晚。",
+    "deadline": "2027年1月4日前預訂；1月10日前入住。",
+    "caveat": "每位會員最多三次；第三方訂房平台不適用。",
+    "source_url": "https://all.accor.com/a/en/loyalty-program/partners/offers/Cathay-Pacific-Asia-Miles-offer.html",
+    "checked_at": "2026-11-18",
+    "valid_until": "2027-01-04"
+  },
+  "evidence": [
+    {
+      "field": "bonus_or_value",
+      "official_url": "https://all.accor.com/a/en/loyalty-program/partners/offers/Cathay-Pacific-Asia-Miles-offer.html",
+      "excerpt": "50% Bonus Reward Points"
+    },
+    {
+      "field": "dates",
+      "official_url": "https://all.accor.com/a/en/loyalty-program/partners/offers/Cathay-Pacific-Asia-Miles-offer.html",
+      "excerpt": "January 4th 2027"
+    },
+    {
+      "field": "eligibility",
+      "official_url": "https://all.accor.com/a/en/loyalty-program/partners/offers/Cathay-Pacific-Asia-Miles-offer.html",
+      "excerpt": "activated Cathay Pacific Asia Miles as their preferred automatic conversion option"
+    }
+  ],
+  "checks": {
+    "fact": {
+      "status": "pending",
+      "note": "待 Muse 審核"
+    },
+    "originality": {
+      "status": "pending",
+      "note": "待 Muse 審核"
+    },
+    "copyright": {
+      "status": "pending",
+      "note": "待 Muse 審核"
+    },
+    "sensitive": {
+      "status": "pending",
+      "note": "待 Muse 審核"
+    },
+    "quality": {
+      "status": "pending",
+      "note": "待 Muse 審核"
+    }
+  },
+  "status": "pending",
+  "decision": {
+    "result": "pending",
+    "by": null,
+    "at": null,
+    "note": "以 Muse 審核頁為準，目前待審核；舊本地通過紀錄無效。"
+  },
+  "publication_approved": false
+}

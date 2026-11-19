@@ -12,6 +12,7 @@ from unittest.mock import Mock, patch
 import urllib.error
 
 import autorender_v43 as scheduler
+import autorender_review as review
 
 spec = importlib.util.spec_from_file_location('renderer_test', scheduler.V42)
 renderer = importlib.util.module_from_spec(spec)
@@ -81,6 +82,7 @@ class PreviewRegistration(unittest.TestCase):
         self.stack.enter_context(contextlib.redirect_stdout(io.StringIO()))
         self.stack.enter_context(patch.object(scheduler, 'STATE', self.root / 'state.sqlite3'))
         self.stack.enter_context(patch.object(scheduler, 'OUTPUT', self.root / 'out'))
+        self.review_record = self.stack.enter_context(patch.object(review, 'read_review', return_value=None))
         self.key = 'test|hotel'
         self.approval = self.root / 'approved.json'
         facts = {'event_key': self.key, 'slug': 'test'}
@@ -115,23 +117,23 @@ class PreviewRegistration(unittest.TestCase):
                          'attempts INTEGER NOT NULL, last_error TEXT, rendered_at TEXT, updated_at TEXT NOT NULL)')
             conn.execute('INSERT INTO runs VALUES(?,?,?,?,?,?)',
                          (self.key, 'FAILED', 1, 'StopV42', None, scheduler.iso_now()))
-        result = scheduler.adopt_preview(self.receipt, reviewed=True)
-        self.assertEqual(result['stage'], 'PREVIEW_REVIEWED')
+        result = scheduler.adopt_preview(self.receipt)
+        self.assertEqual(result['stage'], 'PREVIEW_READY')
         with contextlib.closing(scheduler.db_open()) as conn:
             self.assertEqual(scheduler.status_for(conn, self.key), ('SUCCEEDED', 1))
         result = scheduler.run_weekly()
         self.assertEqual(result['stage'], 'ALREADY_RENDERED')
-        self.assertEqual(result['review_status'], 'APPROVED')
+        self.assertEqual(result['review_status'], 'pending')
         self.assertFalse(result['publication_approved'])
         self.assertFalse(result['youtube_upload'])
         self.secret.assert_not_called()
 
-    def test_repeated_import_preserves_review_and_blocks_reset(self):
-        scheduler.adopt_preview(self.receipt, reviewed=True)
+    def test_repeated_import_remains_pending_and_blocks_reset(self):
+        scheduler.adopt_preview(self.receipt)
         scheduler.adopt_preview(self.receipt)
         scheduler.reset(self.key)
         result = scheduler.run_weekly(True)
-        self.assertEqual(result['review_status'], 'APPROVED')
+        self.assertEqual(result['review_status'], 'pending')
         self.assertEqual(result['stage'], 'ALREADY_RENDERED')
 
     def test_changed_movie_is_detected(self):
@@ -146,7 +148,7 @@ class PreviewRegistration(unittest.TestCase):
         receipt['narration_sha256'] = 'incorrect'
         self.receipt.write_text(json.dumps(receipt))
         with self.assertRaisesRegex(scheduler.V43Error, 'narration mismatch'):
-            scheduler.adopt_preview(self.receipt, reviewed=True)
+            scheduler.adopt_preview(self.receipt)
         with contextlib.closing(scheduler.db_open()) as conn:
             self.assertIsNone(scheduler.status_for(conn, self.key))
 
@@ -178,7 +180,7 @@ class PreviewRegistration(unittest.TestCase):
              patch.object(renderer, 'render', return_value=self.movie) as render:
             result = scheduler.run_weekly()
             self.assertEqual(result['stage'], 'PREVIEW_READY')
-            self.assertEqual(result['review_status'], 'PENDING')
+            self.assertEqual(result['review_status'], 'pending')
             self.assertEqual(scheduler.run_weekly()['stage'], 'ALREADY_RENDERED')
             draft.assert_called_once()
             render.assert_called_once()
@@ -194,14 +196,15 @@ class PreviewRegistration(unittest.TestCase):
             render.assert_called_once()
 
     def test_revised_rejected_preview_requires_a_new_review(self):
-        scheduler.adopt_preview(self.receipt, reviewed=True)
-        with contextlib.closing(scheduler.db_open()) as conn:
-            conn.execute("UPDATE previews SET review_status='CHANGES_REQUESTED' WHERE event_key=?", (self.key,))
+        scheduler.adopt_preview(self.receipt)
+        self.review_record.return_value = {
+            'status': 'returned', 'decision': {'at': None}, 'publication_approved': False,
+            'video': {'version': 'sha256:' + self.digest}}
         self.movie.write_bytes(b'new-version' * 300)
         with self.assertRaises(scheduler.V43Error):
             scheduler.adopt_preview(self.receipt)
         result = scheduler.adopt_preview(self.receipt, replace=True)
-        self.assertEqual(result['review_status'], 'PENDING')
+        self.assertEqual(result['review_status'], 'pending')
         self.assertIsNone(result['reviewed_at'])
 
 
