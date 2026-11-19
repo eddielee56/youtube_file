@@ -9,6 +9,7 @@ from pathlib import Path
 import re, subprocess, sys, urllib.request, urllib.error
 import random
 import time
+import shutil
 
 HERE=Path(__file__).resolve().parent
 PROJECT=HERE.parent
@@ -184,28 +185,64 @@ def load_checked_draft(input_path):
     if sb['scenes']!=scenes:raise StopV42('Storyboards were modified; stop to avoid unreviewed voice')
     return facts,scenes,folder
 
-def render(input_path):
+def render(input_path,reuse_voice=False,revision=None):
     facts,scenes,folder=load_checked_draft(Path(input_path).resolve())
     # Reuse V2.1 verified timestamping, card creation and FFmpeg pipeline; inject V4.2 narration.
     v21=module('v21_renderer_v42',RENDER_MOD)
     x={k:facts[k] for k in ('type','title','hook','program','headline','benefit','eligibility','deadline','caveat','conclusion',
                              'source_url','checked_at','valid_until')}
     x.update(slug='v42_'+facts['slug'],source_verified=False,approved_for_publication=False)
+    if facts.get('program')=='ALL Accor × Cathay Asia Miles':
+        assets=HERE/'assets'/'brands'
+        manifest=read(assets/'sources.json')
+        if manifest['event_key']!=facts['event_key']:raise StopV42('Official logo event mismatch')
+        checksums={item['file']:item['sha256'] for item in manifest['assets']}
+        x['brand_logos']=[]
+        for name in manifest['render_files']:
+            path=assets/name
+            if hashlib.sha256(path.read_bytes()).hexdigest()!=checksums[name]:
+                raise StopV42('Official logo checksum mismatch: '+name)
+            x['brand_logos'].append(path)
     mapped=[]
     tags=['01 / 開場','02 / 優惠重點','03 / 適用資格','04 / 活動期限','05 / 注意事項','06 / 結尾']
     for i,s in enumerate(scenes):
         mapped.append({'tag':tags[i],'heading':s['heading'],'detail':s['detail'],'narration':s['narration']})
     v21.scenes=lambda _:mapped
     out=v21.outdir(x,True)
+    if revision:
+        if not re.fullmatch(r'[A-Za-z0-9_-]{1,24}',revision):raise StopV42('Invalid render revision')
+        out=out.with_name(out.name+'_'+revision)
+        out.mkdir(parents=True,exist_ok=True)
+    if reuse_voice:
+        previous=read(folder/'render_receipt.json')
+        source=Path(previous['mp4_path']).parent
+        source_narration=(source/'narration.txt').read_text(encoding='utf-8-sig')
     # Recheck the string actually used for voice is the one the AI generated and approved facts supplied.
     items,script=v21.prepare(x,out)
     if script!='\n'.join(s['narration'] for s in scenes):raise StopV42('Renderer narration mismatch')
     print('V4.2 USING GENERATED NARRATION:',folder/'narration_draft.txt',flush=True)
-    timings=v21.voice(x,out,items,script,demo_voice=True)
+    if reuse_voice:
+        script_hash=hashlib.sha256(script.encode('utf-8')).hexdigest()
+        if previous['snapshot_sha256']!=canonical_sha(facts) or previous['narration_sha256']!=script_hash:
+            raise StopV42('Existing voice belongs to different facts or narration')
+        if source_narration!=script:
+            raise StopV42('Existing voice narration file differs from reviewed narration')
+        audio=source/'narration.wav'
+        if previous.get('audio_sha256') and hashlib.sha256(audio.read_bytes()).hexdigest()!=previous['audio_sha256']:
+            raise StopV42('Existing voice audio changed')
+        for name in ('narration.wav','timeline.json','captions.srt'):
+            if (source/name).resolve()!=(out/name).resolve():shutil.copy2(source/name,out/name)
+        v21.restyle_captions(source/'captions.ass',out/'captions.ass')
+        timings=read(out/'timeline.json')['scenes']
+        if len(timings)!=len(items):raise StopV42('Existing timeline scene count differs')
+    else:
+        timings=v21.voice(x,out,items,script,demo_voice=True)
     movie=v21.make_video(x,out,timings,True,demo_voice=True)
     save(folder/'render_receipt.json',{'event_key':facts['event_key'],'snapshot_sha256':canonical_sha(facts),
         'preview_only':True,'publication_approved':False,'auto_upload':False,
         'narration_sha256':hashlib.sha256(script.encode('utf8')).hexdigest(),'mp4_path':str(movie),
+        'audio_sha256':hashlib.sha256((out/'narration.wav').read_bytes()).hexdigest(),
+        'render_revision':revision,'reused_voice':reuse_voice,
         'created_at':dt.datetime.now(dt.timezone.utc).isoformat()})
     print('V4.2 PREVIEW READY:',movie)
     return movie
@@ -241,11 +278,14 @@ def cli():
     for op in ('draft','preview'):
         q=sub.add_parser(op);q.add_argument('--input',required=True)
         if op=='draft':q.add_argument('--mode',choices=('offline','gemini'),default='gemini');q.add_argument('--model',default=MODEL)
+        else:
+            q.add_argument('--reuse-voice',action='store_true')
+            q.add_argument('--revision')
     args=pa.parse_args()
     try:
         if args.cmd=='selftest':selftest()
         elif args.cmd=='draft':draft(args.input,args.model,args.mode)
-        else:render(args.input)
+        else:render(args.input,args.reuse_voice,args.revision)
     except (StopV42,OSError,KeyError,ValueError,RuntimeError,subprocess.CalledProcessError) as e:
         print('V4.2 STOP:',str(e),file=sys.stderr);return 2
     return 0

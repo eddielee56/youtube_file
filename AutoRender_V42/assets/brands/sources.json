@@ -1,0 +1,28 @@
+{
+  "assets": [
+    {
+      "file": "accor.svg",
+      "official_url": "https://group.accor.com/_next/static/media/accor-logo.2_z53pbi7ds4u.svg",
+      "source_page": "https://group.accor.com/en",
+      "sha256": "b2baaa0eca9d599aa1a1009e2c4da03dcfe08b03779f8b0ee3dbc1cac157333c"
+    },
+    {
+      "file": "cathay.png",
+      "official_url": "https://www.cathaypacific.com/content/dam/header-footer/cx_brushwing_logo.originalimage.png",
+      "source_page": "https://www.cathaypacific.com/cx/en_HK.html",
+      "sha256": "2a2b8a4755f0a78168f5b4ee3cabbf0ff403717674ce6797bda33e61a4d49ffc"
+    },
+    {
+      "file": "accor.png",
+      "derived_from": "accor.svg",
+      "conversion": "resvg-py 0.5.0 SVG rasterization, original geometry and colors",
+      "sha256": "fa855faa7956fcf653b0e91857bc345256b6a4599b4ad01dbb12b49e7d688a0c"
+    }
+  ],
+  "event_key": "hotel_transfer|cathay|50|da66ef9d39be2963be",
+  "retrieved_at": "2026-11-19T23:40:32.071359+00:00",
+  "render_files": [
+    "accor.png",
+    "cathay.png"
+  ]
+}
