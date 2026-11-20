@@ -60,12 +60,12 @@
       "note": "已檢查實際畫格，Reward Points 完整顯示，適用條件及限制全文可見，待 Muse 審核"
     }
   },
-  "status": "pending",
+  "status": "returned",
   "decision": {
-    "result": "pending",
-    "by": null,
-    "at": null,
-    "note": "第三版已修正 Reward Points 斷詞及場景 03、05 內文遮擋，待 Muse 重新審核；LEE 對 6ef1902 的退回決定保留於 137a6fc。"
+    "result": "returned",
+    "by": "LEE",
+    "at": "2026-11-20T00:07:31Z",
+    "note": "能不能加點輕柔音樂當背景?"
   },
   "publication_approved": false
 }
