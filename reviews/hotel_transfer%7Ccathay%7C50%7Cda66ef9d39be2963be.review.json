@@ -3,13 +3,13 @@
   "title": "雅高 × 國泰｜優惠試播",
   "program": "ALL Accor × Cathay Asia Miles",
   "video": {
-    "repo_path": "previews/accor-cathay/accor_cathay_preview_rev3.mp4",
-    "raw_url": "https://raw.githubusercontent.com/eddielee56/youtube_file/56042c9f3de1dcf0848ef620877fafa691e94e2c/previews/accor-cathay/accor_cathay_preview_rev3.mp4",
+    "repo_path": "previews/accor-cathay/accor_cathay_preview_rev4.mp4",
+    "raw_url": "https://raw.githubusercontent.com/eddielee56/youtube_file/81374be8017ccde1e8aa9b387c604ca09574dc3b/previews/accor-cathay/accor_cathay_preview_rev4.mp4",
     "duration_s": 50.367,
     "width": 540,
     "height": 960,
-    "version": "56042c9",
-    "commit_sha": "56042c9f3de1dcf0848ef620877fafa691e94e2c"
+    "version": "81374be",
+    "commit_sha": "81374be8017ccde1e8aa9b387c604ca09574dc3b"
   },
   "facts": {
     "headline": "合格住宿額外獲得50% Reward Points",
@@ -49,7 +49,7 @@
     },
     "copyright": {
       "status": "pending",
-      "note": "待 Muse 審核"
+      "note": "曲名、演出者及使用者提供的 YouTube 音樂庫授權已存檔，待 Muse 審核"
     },
     "sensitive": {
       "status": "pending",
@@ -57,15 +57,15 @@
     },
     "quality": {
       "status": "pending",
-      "note": "已檢查實際畫格，Reward Points 完整顯示，適用條件及限制全文可見，待 Muse 審核"
+      "note": "畫面逐格比對與第三版一致；配樂平均低於旁白約 29 dB，旁白出聲時自動壓低音樂，待 Muse 審核"
     }
   },
-  "status": "returned",
+  "status": "pending",
   "decision": {
-    "result": "returned",
-    "by": "LEE",
-    "at": "2026-11-20T00:07:31Z",
-    "note": "能不能加點輕柔音樂當背景?"
+    "result": "pending",
+    "by": null,
+    "at": null,
+    "note": "第四版已加入 The Swan（The Soundlings）輕柔背景音樂，待 Muse 重新審核；音樂授權資訊依 LEE 提供的說明記錄於 AutoRender_V42/assets/music/the_swan.license.json。"
   },
   "publication_approved": false
 }
