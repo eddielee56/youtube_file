@@ -14,7 +14,7 @@ class SubtitleLayout(unittest.TestCase):
             renderer.ass_subs([{'start':1.2,'end':3.4,'text':'測試字幕長度超過十六個中文字就必須自動分成兩行'}],root)
             text=(root/'captions.ass').read_text(encoding='utf-8-sig')
             self.assertIn(renderer.CAPTION_STYLE,text)
-            self.assertIn('1,2,38,38,94,1',text)
+            self.assertIn('0,2,38,38,218,1',text)
             self.assertIn('\\N',text)
             self.assertIn('0:00:01.20,0:00:03.40',text)
 
@@ -23,7 +23,7 @@ class SubtitleLayout(unittest.TestCase):
             root=Path(directory)
             renderer.ass_subs([{'start':0.25,'end':2.5,'text':'原有字幕內容保持一致'}],root)
             original=(root/'captions.ass').read_text(encoding='utf-8-sig')
-            original=original.replace(',38,38,94,1',',38,38,140,1')
+            original=original.replace(',38,38,218,1',',38,38,140,1')
             (root/'old.ass').write_text(original,encoding='utf-8')
             renderer.restyle_captions(root/'old.ass',root/'new.ass')
             revised=(root/'new.ass').read_text(encoding='utf-8-sig')
@@ -85,9 +85,25 @@ class SubtitleLayout(unittest.TestCase):
             with self.subTest(heading=heading):
                 layout=renderer.card_text_layout(draw,heading,detail)
                 self.assertEqual(''.join(layout[3]),detail)
-                self.assertLessEqual(layout[6]+len(layout[3])*layout[5],636)
+                self.assertLessEqual(layout[6]+len(layout[3])*layout[5],614)
                 if heading=='注意事項':
                     self.assertIn('第三方訂房平台不適用。',layout[3])
+
+    def test_all_lines_are_opaque_and_legacy_fades_are_removed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            renderer.ass_subs([{'start':1,'end':4,'text':'合格住宿額外獲得50% Reward Points。'}],root)
+            text=(root/'captions.ass').read_text(encoding='utf-8-sig')
+            text=text.replace(renderer.CAPTION_OVERRIDE,r'{\alpha&H80&\fad(0,1000)}')
+            (root/'faded.ass').write_text(text,encoding='utf-8')
+            renderer.restyle_captions(root/'faded.ass',root/'fixed.ass')
+            fixed=(root/'fixed.ass').read_text(encoding='utf-8-sig')
+            dialogue=next(line for line in fixed.splitlines() if line.startswith('Dialogue:'))
+            self.assertIn(renderer.CAPTION_OVERRIDE,dialogue)
+            self.assertNotIn(r'\fad',dialogue)
+            self.assertNotIn('&H80&',dialogue)
+            self.assertIn('\\NReward Points',dialogue)
+            self.assertGreaterEqual(renderer.H-renderer.CAPTION_BOTTOM,200)
 
 
 if __name__=='__main__':

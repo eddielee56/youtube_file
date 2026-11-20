@@ -14,7 +14,7 @@
   },
   "sha256": "afbcf873b35266ed0e1889f400704b9c4d97443e730ea5328b0ace2e0698ad50",
   "mix": {
-    "gain_db": -24.0,
+    "gain_db": -14.0,
     "duck_under_narration": true,
     "fade_in_s": 1.5,
     "fade_out_s": 2.5
@@ -23,9 +23,9 @@
     "method": "FFmpeg volumedetect, isolated PCM stems before encoding",
     "duration_s": 50.367,
     "narration_mean_dbfs": -19.0,
-    "music_bed_mean_dbfs": -47.7,
-    "music_below_narration_db": 28.7,
-    "mixed_mean_dbfs": -19.0,
-    "mixed_peak_dbfs": -4.0
+    "music_bed_mean_dbfs": -37.7,
+    "music_below_narration_db": 18.7,
+    "mixed_mean_dbfs": -18.9,
+    "mixed_peak_dbfs": -3.9
   }
 }
