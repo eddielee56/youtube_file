@@ -60,12 +60,12 @@
       "note": "畫面逐格比對與第三版一致；配樂平均低於旁白約 29 dB，旁白出聲時自動壓低音樂，待 Muse 審核"
     }
   },
-  "status": "pending",
+  "status": "returned",
   "decision": {
-    "result": "pending",
-    "by": null,
-    "at": null,
-    "note": "第四版已加入 The Swan（The Soundlings）輕柔背景音樂，待 Muse 重新審核；音樂授權資訊依 LEE 提供的說明記錄於 AutoRender_V42/assets/music/the_swan.license.json。"
+    "result": "returned",
+    "by": "LEE",
+    "at": "2026-11-20T02:05:41Z",
+    "note": "背景音樂不明顯, 字幕太接近下緣時間軸, 第二行的字顏色會被淡化, 請修正"
   },
   "publication_approved": false
 }
