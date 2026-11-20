@@ -60,12 +60,12 @@
       "note": "配樂提高 10 dB，平均仍低於旁白約 19 dB，保留自動壓低與淡入淡出；字幕上移約 124 像素，雙行字幕第二行亮度已逐格檢查，待 Muse 審核"
     }
   },
-  "status": "pending",
+  "status": "approved",
   "decision": {
-    "result": "pending",
-    "by": null,
-    "at": null,
-    "note": "第五版已提高配樂、上移字幕帶並設定兩行字幕完全不透明，待 Muse 重新審核；第四版退回決定保留於 ae7f6a9。"
+    "result": "approved",
+    "by": "LEE",
+    "at": "2026-11-20T02:46:24Z",
+    "note": "第五版 e1d61ea 內部試播審核通過，尚未核准發布。"
   },
   "publication_approved": false
 }
