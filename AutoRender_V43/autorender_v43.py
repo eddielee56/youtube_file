@@ -16,8 +16,24 @@ import subprocess
 import sys
 import tempfile
 
-ROOT=Path(__file__).resolve().parent
-PROJECT=ROOT.parent
+def runtime_project(source_root):
+    source_root=Path(source_root).resolve()
+    path=source_root/'runtime_config.json'
+    configuration=json.loads(path.read_text(encoding='utf-8-sig')) if path.is_file() else {}
+    configured=configuration.get('runtime_project')
+    if not configured:return source_root.parent
+    project=Path(configured)
+    if not project.is_absolute():project=source_root.parent/project
+    project=project.resolve()
+    for version in ('38','43'):
+        script=project/('AutoRender_V'+version)/('autorender_v'+version+'.py')
+        if not script.is_file():raise ValueError('runtime_project missing required script: '+str(script))
+    return project
+
+
+SOURCE_ROOT=Path(__file__).resolve().parent
+PROJECT=runtime_project(SOURCE_ROOT)
+ROOT=PROJECT/'AutoRender_V43'
 V39=PROJECT/'AutoRender_V39'/'autorender_v39.py'
 V42=PROJECT/'AutoRender_V42'/'autorender_v42.py'
 WEEKLY=PROJECT/'AutoRender_V38'/'output'/'weekly_topic_review.json'

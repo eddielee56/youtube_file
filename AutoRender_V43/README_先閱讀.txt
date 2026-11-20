@@ -21,6 +21,13 @@ publication_approved 明確記錄發布核准。
 也可設定 AUTORENDER_REVIEW_REPO。
 直接從 Git checkout 執行時，預設使用該 repo。
 
+若 V3.8 排程在另一個已安裝的 YouTubeAI 專案執行，請在此 checkout 的 AutoRender_V43/runtime_config.json
+設定 runtime_project 為該 YouTubeAI 根目錄，確保選題、核准檔、製片與狀態使用同一個專案。
+runtime_config.json 是本機設定，已從 Git 排除。review_repository 仍指向存放 reviews 的 Git checkout。
+run_v43.ps1 與直接執行 autorender_v43.py 都會套用 runtime_project，日誌寫入實際執行專案的 logs 目錄。
+runtime_config.json 的 python_executable 可指定已安裝的 Python 3.12 完整路徑，供排程直接啟動同一個 Python 環境。
+
+
 驗證 repo 審核資料
 
 py -3.12 autorender_v43.py validate-reviews
