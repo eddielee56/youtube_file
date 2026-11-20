@@ -18,6 +18,7 @@ W,H,FPS = 540,960,30
 WHITE=(245,247,255); MUTED=(161,177,200); BG=(12,20,40); CYAN=(60,209,232)
 VALID_TYPES={'credit_card':'信用卡優惠','transfer_bonus':'點數轉點加成','award_flight':'機票哩程兌換','hotel_to_airline':'飯店點數與航空哩程'}
 CAPTION_STYLE='Style: Main,Microsoft JhengHei,26,&H00FFFFFF,&H000000FF,&H92000000,&H60000000,1,0,0,0,100,100,0,0,1,3,1,2,38,38,94,1'
+CAPTION_TOKEN=re.compile(r'Reward[ \t]+Points|Asia[ \t]+Miles|[A-Za-z0-9]+(?:[\x27’.-][A-Za-z0-9]+)*[%％]?|[ \t]+|.',re.I)
 
 def load_input(p:Path):
     x=json.loads(p.read_text(encoding='utf-8-sig'))
@@ -97,6 +98,25 @@ def lines_fit(draw,text,ft,maxw,maxlines=6):
     if len(lines)>maxlines: raise ValueError('資訊卡文字過長，請縮短，避免畫面裁切：'+text[:70])
     return lines
 
+def card_text_layout(draw,heading,detail):
+    for heading_size,detail_size in ((39,27),(36,25),(33,23),(30,21)):
+        heading_font=font(heading_size,True)
+        detail_font=font(detail_size)
+        try:
+            heading_lines=lines_fit(draw,heading,heading_font,428,5)
+            paragraphs=re.sub(r'(?<=[，；。])(?=.)','\n',detail)
+            try:detail_lines=lines_fit(draw,paragraphs,detail_font,420,6)
+            except ValueError:detail_lines=lines_fit(draw,detail,detail_font,420,6)
+        except ValueError:
+            continue
+        heading_step=round(heading_size*1.55)
+        detail_step=round(detail_size*1.65)
+        detail_y=264+len(heading_lines)*heading_step+22
+        if detail_y+len(detail_lines)*detail_step<=636:
+            return heading_font,detail_font,heading_lines,detail_lines,heading_step,detail_step,detail_y
+    raise ValueError('資訊卡文字超出可讀範圍，停止輸出，請調整文案')
+
+
 def card(x,scene,index,d,demo=False):
     im=Image.new('RGB',(W,H),BG); dr=ImageDraw.Draw(im)
     # Dark navy gradient with teal accent, designed for legibility.
@@ -115,15 +135,11 @@ def card(x,scene,index,d,demo=False):
         im.paste(logo,(left+(100-logo.width)//2,110+(92-logo.height)//2),logo)
     dr.rounded_rectangle((30,218,510,715),radius=28,fill=(24,43,71))
     dr.rounded_rectangle((30,218,510,228),radius=5,fill=CYAN)
-    heading=scene['heading']; ft=font(39,True)
-    hl=lines_fit(dr,heading,ft,428,5)
-    yy=274
-    for line in hl:dr.text((55,yy),line,font=ft,fill=WHITE);yy+=61
-    yy+=25
-    detail=scene['detail']; ft2=font(27)
-    dl=lines_fit(dr,detail,ft2,420,5)
-    if yy+len(dl)*45>680:raise ValueError('資訊卡內容太長，請縮短：'+detail)
-    for line in dl:dr.text((56,yy),line,font=ft2,fill=(202,218,236));yy+=45
+    ft,ft2,hl,dl,heading_step,detail_step,detail_y=card_text_layout(dr,scene['heading'],scene['detail'])
+    yy=264
+    for line in hl:dr.text((55,yy),line,font=ft,fill=WHITE);yy+=heading_step
+    yy=detail_y
+    for line in dl:dr.text((56,yy),line,font=ft2,fill=(202,218,236));yy+=detail_step
     dr.text((34,734),'官方資訊需核對活動條款',font=font(20),fill=MUTED)
     dr.rounded_rectangle((32,766,508,775),radius=5,fill=(48,70,93))
     dr.rounded_rectangle((32,766,32+int(476*(index+1)/6),775),radius=5,fill=CYAN)
@@ -132,9 +148,8 @@ def card(x,scene,index,d,demo=False):
     dr.text((34,885),x['title'][:22],font=font(21),fill=(170,197,221))
     dr.text((34,925),'資料查核：'+x['checked_at'],font=font(18),fill=MUTED)
     if demo:
-        # prominent repeating SAMPLE stamp, so nobody confuses fictitious terms with a live offer.
-        dr.rounded_rectangle((42,410,498,506),radius=16,fill=(144,49,51))
-        dr.text((66,427),'內部試播｜未核准發布',font=font(31,True),fill=(255,255,255))
+        dr.rounded_rectangle((42,655,498,700),radius=12,fill=(144,49,51))
+        dr.text((75,663),'內部試播｜未核准發布',font=font(24,True),fill=(255,255,255))
     p=d/f'scene_{index+1:02}.png';im.save(p);return p
 
 def cmd(args,cwd=None):
@@ -150,6 +165,39 @@ def ass_time(sec):
     q=round(100*sec);h,q=divmod(q,360000);m,q=divmod(q,6000);s,cs=divmod(q,100)
     return f'{h}:{m:02}:{s:02}.{cs:02}'
 
+def wrap_caption(text):
+    measure=ImageDraw.Draw(Image.new('RGB',(1,1)))
+    caption_font=font(26,True)
+    tokens=[]
+    for token in CAPTION_TOKEN.findall(text):
+        if tokens and re.fullmatch(r'[，。！？；：、,.!?;:）)\]」』]+',token):
+            tokens[-1]+=token
+        else:
+            tokens.append(token)
+    lines=[]
+    current=''
+    for token in tokens:
+        if measure.textlength(token,font=caption_font)>448:
+            raise ValueError('字幕單字超出字幕帶寬度：'+token)
+        if current.strip() and measure.textlength(current+token,font=caption_font)>448:
+            lines.append(current.rstrip())
+            current=token.lstrip()
+        else:
+            current+=token
+    if current.strip():lines.append(current.rstrip())
+    if len(lines)>2:raise ValueError('字幕超過兩行，請調整字幕分段')
+    return '\\N'.join(lines)
+
+
+def caption_fragments(text,limit=26):
+    start=0
+    for token in CAPTION_TOKEN.finditer(text):
+        if token.end()-start>limit and token.start()>start:
+            yield start,text[start:token.start()]
+            start=token.start()
+    if start<len(text):yield start,text[start:]
+
+
 def ass_subs(cues, d):
     head=f'''[Script Info]\nScriptType: v4.00+\nPlayResX: 540\nPlayResY: 960\nWrapStyle: 2\nScaledBorderAndShadow: yes\n[V4+ Styles]\nFormat: Name,Fontname,Fontsize,PrimaryColour,SecondaryColour,OutlineColour,BackColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding\n{CAPTION_STYLE}\n[Events]\nFormat: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text\n'''
     events=[]
@@ -157,7 +205,7 @@ def ass_subs(cues, d):
         t=c['text'].replace('{','（').replace('}','）').replace('\\','／')
         # Keep captions on two short lines; fail long captions rather than clipping.
         if len(t)>30:raise ValueError('字幕段落過長，請縮短：'+t)
-        if len(t)>16:t=t[:16]+'\\N'+t[16:]
+        t=wrap_caption(t)
         events.append(f'Dialogue: 0,{ass_time(c["start"])},{ass_time(c["end"])},Main,,0,0,0,,{t}')
     (d/'captions.ass').write_text(head+'\n'.join(events)+'\n',encoding='utf-8-sig')
 
@@ -166,6 +214,14 @@ def restyle_captions(source,destination):
     text=Path(source).read_text(encoding='utf-8-sig')
     text,count=re.subn(r'^Style: Main,[^\r\n]*',CAPTION_STYLE,text,flags=re.MULTILINE)
     if count!=1:raise ValueError('字幕缺少唯一 Main 樣式，停止重用')
+    lines=[]
+    for line in text.splitlines():
+        if line.startswith('Dialogue:'):
+            columns=line.split(',',9)
+            columns[9]=wrap_caption(columns[9].replace('\\N',''))
+            line=','.join(columns)
+        lines.append(line)
+    text='\n'.join(lines)+'\n'
     Path(destination).write_text(text,encoding='utf-8-sig')
 
 def make_video(x,d,scene_timing,demo, demo_voice=False):
@@ -246,8 +302,8 @@ def voice(x,d,s,script, demo_voice=False):
             fragment=match.group().strip()
             if not fragment:continue
             # Split lengthy captions; use boundary events instead of interpolating timings.
-            for j in range(0,len(fragment),26):
-                sub=fragment[j:j+26];offset=base+match.start()+j
+            for j,sub in caption_fragments(fragment):
+                offset=base+match.start()+j
                 t=next((e['time'] for e in events if e['offset']>=offset),None)
                 if t is None:raise RuntimeError('字幕缺少 Word Boundary 事件')
                 cues.append({'start':t,'text':sub})
