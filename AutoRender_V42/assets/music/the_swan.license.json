@@ -1,0 +1,31 @@
+{
+  "event_key": "hotel_transfer|cathay|50|da66ef9d39be2963be",
+  "file": "The Swan - The Soundlings.mp3",
+  "title": "The Swan",
+  "artist": "The Soundlings",
+  "duration_s": 166.347755,
+  "source": "YouTube Studio Audio Library",
+  "source_url": "https://www.youtube.com/audiolibrary",
+  "license": {
+    "name": "YouTube Audio Library license",
+    "permitted_uses": "可用於所有影片，包含營利影片",
+    "attribution_required": false,
+    "information_source": "LEE 提供的 YouTube Studio 音樂庫下載檔案與授權說明"
+  },
+  "sha256": "afbcf873b35266ed0e1889f400704b9c4d97443e730ea5328b0ace2e0698ad50",
+  "mix": {
+    "gain_db": -24.0,
+    "duck_under_narration": true,
+    "fade_in_s": 1.5,
+    "fade_out_s": 2.5
+  },
+  "mix_verification": {
+    "method": "FFmpeg volumedetect, isolated PCM stems before encoding",
+    "duration_s": 50.367,
+    "narration_mean_dbfs": -19.0,
+    "music_bed_mean_dbfs": -47.7,
+    "music_below_narration_db": 28.7,
+    "mixed_mean_dbfs": -19.0,
+    "mixed_peak_dbfs": -4.0
+  }
+}

@@ -203,6 +203,18 @@ def render(input_path,reuse_voice=False,revision=None):
             if hashlib.sha256(path.read_bytes()).hexdigest()!=checksums[name]:
                 raise StopV42('Official logo checksum mismatch: '+name)
             x['brand_logos'].append(path)
+    music_metadata=None
+    music_license=HERE/'assets'/'music'/'the_swan.license.json'
+    if music_license.is_file():
+        music_metadata=read(music_license)
+        if music_metadata['event_key']==facts['event_key']:
+            track=music_license.parent/music_metadata['file']
+            if hashlib.sha256(track.read_bytes()).hexdigest()!=music_metadata['sha256']:
+                raise StopV42('Background music checksum mismatch')
+            x['background_music']=track
+            x['music_mix']=music_metadata['mix']
+        else:
+            music_metadata=None
     mapped=[]
     tags=['01 / 開場','02 / 優惠重點','03 / 適用資格','04 / 活動期限','05 / 注意事項','06 / 結尾']
     for i,s in enumerate(scenes):
@@ -243,6 +255,7 @@ def render(input_path,reuse_voice=False,revision=None):
         'narration_sha256':hashlib.sha256(script.encode('utf8')).hexdigest(),'mp4_path':str(movie),
         'audio_sha256':hashlib.sha256((out/'narration.wav').read_bytes()).hexdigest(),
         'render_revision':revision,'reused_voice':reuse_voice,
+        'background_music':music_metadata,
         'created_at':dt.datetime.now(dt.timezone.utc).isoformat()})
     print('V4.2 PREVIEW READY:',movie)
     return movie

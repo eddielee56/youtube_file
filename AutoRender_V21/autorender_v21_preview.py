@@ -224,6 +224,20 @@ def restyle_captions(source,destination):
     text='\n'.join(lines)+'\n'
     Path(destination).write_text(text,encoding='utf-8-sig')
 
+def music_mix_filters(duration_s,settings):
+    gain=float(settings.get('gain_db',-24.0))
+    fade_in=min(float(settings.get('fade_in_s',1.5)),duration_s)
+    fade_out=min(float(settings.get('fade_out_s',2.5)),duration_s)
+    return [
+        '[1:a]aresample=48000,pan=stereo|c0=c0|c1=c0,apad,asplit=2[voice][sidechain]',
+        f'[2:a]aresample=48000,aformat=channel_layouts=stereo,volume={gain}dB,'
+        f'afade=t=in:st=0:d={fade_in},afade=t=out:st={max(0,duration_s-fade_out):.3f}:d={fade_out}[music]',
+        '[music][sidechain]sidechaincompress=threshold=0.03:ratio=4:attack=20:release=350:makeup=1[ducked]',
+        '[voice][ducked]amix=inputs=2:normalize=0:duration=first:dropout_transition=0,'
+        'alimiter=limit=0.95:level=false:latency=true[a]',
+    ]
+
+
 def make_video(x,d,scene_timing,demo, demo_voice=False):
     if not shutil.which('ffmpeg') or not shutil.which('ffprobe'):raise RuntimeError('請先安裝 FFmpeg，並加入 PATH。')
     imgs=[]
@@ -247,12 +261,16 @@ def make_video(x,d,scene_timing,demo, demo_voice=False):
         if not wav.exists():raise RuntimeError('缺少 narration.wav，請先執行 voice 或 all。')
         ad=duration(wav);vd=duration(vid)
         if abs(ad-vd)>0.75:raise RuntimeError(f'旁白與影片長度差距過大：{ad:.2f} vs {vd:.2f}')
-        music=ROOT/'background_music.mp3'
+        music=Path(x.get('background_music',ROOT/'background_music.mp3'))
         args=['ffmpeg','-hide_banner','-loglevel','error','-y','-i',str(vid),'-i',str(wav)]
         if music.exists():args += ['-stream_loop','-1','-i',str(music)]
-        filters=['[0:v]ass=captions.ass,format=yuv420p[v]','[1:a]volume=1.0,apad[a1]']
-        if music.exists(): filters += ['[2:a]volume=0.10[a2]','[a1][a2]amix=inputs=2:duration=first:dropout_transition=0[a]']
-        else: filters += ['[a1]anull[a]']
+        filters=['[0:v]ass=captions.ass,format=yuv420p[v]']
+        if music.exists() and x.get('music_mix'):
+            filters+=music_mix_filters(vd,x['music_mix'])
+        else:
+            filters+=['[1:a]volume=1.0,apad[a1]']
+            if music.exists():filters+=['[2:a]volume=0.10[a2]','[a1][a2]amix=inputs=2:duration=first:dropout_transition=0[a]']
+            else:filters+=['[a1]anull[a]']
         args += ['-filter_complex',';'.join(filters),'-map','[v]','-map','[a]','-t',f'{vd:.3f}','-c:v','libx264','-preset','veryfast','-crf','23','-r',str(FPS),'-pix_fmt','yuv420p','-c:a','aac','-b:a','128k','-movflags','+faststart',str(output)]
         cmd(args,cwd=d)
     if not output.exists() or duration(output)<3: raise RuntimeError('MP4 輸出驗證失敗')
