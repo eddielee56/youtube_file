@@ -1,16 +1,22 @@
 {
-  "generated_at": "2026-11-18T22:21:57.166313+08:00",
+  "generated_at": "2026-11-20T18:00:02.371440+08:00",
   "status": "EDITORIAL_REVIEW_ONLY",
-  "selected_event_key": "hotel_transfer|cathay|50|da66ef9d39be2963be",
-  "headline": "ALL Accor: 50% Bonus Reward Points With Asia Miles Conversion, Book by January 4 - Milesopedia",
-  "category": "hotel_to_airline",
-  "score": 68,
+  "selected_event_key": "transfer|chase|virgin_atlantic|40",
+  "headline": "New: Get a Big 40% Boost on Chase Transfers to Virgin Atlantic! - Thrifty Traveler",
+  "category": "transfer_bonus",
+  "score": 82,
   "source_articles": [
     {
-      "title": "ALL Accor: 50% Bonus Reward Points With Asia Miles Conversion, Book by January 4 - Milesopedia",
-      "url": "https://news.google.com/rss/articles/CBMie0FVX3lxTFBjNGdJbzk3X29PTzAySm5mZTVBN19kMGtkVjZmcTJXWEFobVFBc3R1bV9nN2pHQmNGVHpFa0ZMR01Wd2kwTHVhWVJGb2NjbWtZZXlVZG5oc0hkSVRkUFRjMk4tS2FTN2xMMzhiZ2hoQlk4bVpwZUJzc2lSWQ?oc=5",
-      "publisher": "Milesopedia",
-      "published_at": "2026-11-11T01:15:34+08:00"
+      "title": "New: Get a Big 40% Boost on Chase Transfers to Virgin Atlantic! - Thrifty Traveler",
+      "url": "https://news.google.com/rss/articles/CBMiiwFBVV95cUxPQ0I0LXRrOFF0bmRmVzNRMkpNSl80NlJzRGxmYkRmTFBJMVRqZDFCbGZ5akFWZWNtMU1IZmotTjFsR0RKRC1UNGhQRVlGZEhyNUpRX2l6bVl1cU83ZlBNXzktR3AtNFZxZTl1Z0hFdmNucm5vZlcxekZnMk1XLU5RaVNoR3JUbXBvaldN?oc=5",
+      "publisher": "Thrifty Traveler",
+      "published_at": "2026-11-17T00:28:16+08:00"
+    },
+    {
+      "title": "Chase adds 40% bonus to Virgin Atlantic transfers - InsideFlyer",
+      "url": "https://news.google.com/rss/articles/CBMiiwFBVV95cUxQOE11aDFZTDE3dW4tVnhzektnQXF3eEM3blR4SDQ0N044NVRyWWhqUzJfQ2hjQXF3X3E2NEJMaHNwVTZUaFhKVFFjMFVMdkxoUVdUTkI3Ul9vNDRUT0RWUWZaNGpxd3R3VmNmbnRYZmhhTkVqdXYtQzdjNmtCQTl3YkFLRHVwdGpUSm1n?oc=5",
+      "publisher": "InsideFlyer",
+      "published_at": "2026-11-19T00:45:34+08:00"
     }
   ],
   "required_before_draft": [

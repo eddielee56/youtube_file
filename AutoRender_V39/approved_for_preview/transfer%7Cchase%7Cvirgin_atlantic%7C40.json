@@ -1,0 +1,38 @@
+{
+  "event_key": "transfer|chase|virgin_atlantic|40",
+  "type": "transfer_bonus",
+  "slug": "chase_virgin_40_preview_2026",
+  "source_url": "https://www.chase.com/personal/credit-cards/ultimate-rewards",
+  "checked_at": "2026-11-21",
+  "valid_until": "2026-12-30",
+  "source_verified": true,
+  "approved_for_preview": true,
+  "publication_approved": false,
+  "reviewer_confirmation": "I_CHECKED_OFFICIAL_TERMS",
+  "title": "Chase → Virgin Atlantic｜轉點加碼40%",
+  "hook": "Chase 點數轉維珍，現在加碼四成！",
+  "program": "Chase Ultimate Rewards → Virgin Atlantic Flying Club",
+  "headline": "1,000 UR 可換1,400 Virgin Points，轉點加碼40%。",
+  "benefit": "平常標準比例為1比1；活動期間多拿40% Virgin Points。",
+  "eligibility": "需持有具轉點資格的 Chase Ultimate Rewards 帳戶，並先加入 Flying Club；最低轉1,000點，且以1,000點為單位。",
+  "deadline": "美東時間2026年11月16日00:00至12月30日23:59，須於期間內完成轉點。",
+  "caveat": "轉點不可逆，無法轉回 UR；加成點數於轉點完成後7天內入帳。",
+  "conclusion": "先確認兌換需求與官方條款，再決定是否轉點。",
+  "evidence": [
+    {
+      "field": "bonus_or_value",
+      "official_url": "https://www.chase.com/personal/credit-cards/ultimate-rewards",
+      "excerpt": "人工查核摘要（使用者提供）：40% bonus；標準1:1；1,000 Ultimate Rewards points → 1,400 Virgin Points。"
+    },
+    {
+      "field": "dates",
+      "official_url": "https://www.chase.com/personal/credit-cards/ultimate-rewards",
+      "excerpt": "The Virgin Atlantic Flying Club bonus offer is valid for Chase Ultimate Rewards point transfers to Virgin Atlantic Flying Club completed between 12:00 AM ET on November 16th, 2026 and 11:59 PM ET on December 30th, 2026. Minimum transfer is 1,000 Ultimate Rewards points."
+    },
+    {
+      "field": "eligibility",
+      "official_url": "https://www.chase.com/personal/credit-cards/ultimate-rewards",
+      "excerpt": "All Ultimate Rewards points transferred to your Virgin Atlantic Flying Club account will be subject to the Terms and Conditions of the Virgin Atlantic Flying Club Program and cannot be transferred back to your Chase Ultimate Rewards account.\n人工查核摘要（使用者提供）：需先加入 Flying Club；最低1,000點且以1,000點為單位；加成點數於轉點完成後7天內入帳。"
+    }
+  ]
+}
